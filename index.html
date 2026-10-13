@@ -23,6 +23,7 @@
   main { max-width:1100px; margin:0 auto; padding:24px 16px 48px; }
   .top { display:flex; align-items:center; justify-content:space-between; gap:12px; }
   h1 { margin:0; font-size:26px; }
+  .btn { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:6px 12px; font-size:13px; text-decoration:none; margin-right:6px; }
   #theme { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:6px 12px; font:inherit; font-size:13px; cursor:pointer; }
   #theme:hover { border-color:var(--muted); }
   .sub { color:var(--muted); margin:4px 0 20px; font-size:13px; }
@@ -44,7 +45,7 @@
 <main>
   <div class="top">
     <h1>Asset Dashboard</h1>
-    <button id="theme" type="button" aria-label="Toggle dark mode"></button>
+    <div><a class="btn" href="update.html">+ Update hosts</a> <button id="theme" type="button" aria-label="Toggle dark mode"></button></div>
   </div>
   <p class="sub" id="sub">Loading…</p>
   <div id="err"></div>

@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Update Hosts</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2939; --muted:#667085; --line:#e4e7ec;
+          --accent:#1f3a5f; --accent-text:#fff; --bad:#c0392b; --good:#1b7f5c; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg:#101828; --card:#1d2939; --text:#f2f4f7; --muted:#98a2b3; --line:#344054;
+            --accent:#6ea8fe; --accent-text:#101828; --bad:#fc8181; --good:#4fd1c5; }
+  }
+  :root[data-theme="dark"] { --bg:#101828; --card:#1d2939; --text:#f2f4f7; --muted:#98a2b3; --line:#344054;
+          --accent:#6ea8fe; --accent-text:#101828; --bad:#fc8181; --good:#4fd1c5; }
+  :root { color-scheme: light dark; }
+  :root[data-theme="light"] { color-scheme: light; }
+  :root[data-theme="dark"] { color-scheme: dark; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  main { max-width:820px; margin:0 auto; padding:24px 16px 48px; }
+  .top { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  h1 { margin:0; font-size:26px; }
+  .sub { color:var(--muted); margin:4px 0 20px; font-size:13px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:12px; }
+  .card h2 { margin:0 0 4px; font-size:16px; }
+  .hint { color:var(--muted); font-size:13px; margin:0 0 10px; }
+  label { display:block; font-size:12px; color:var(--muted); margin-bottom:3px; text-transform:uppercase; letter-spacing:.03em; }
+  input, select { width:100%; padding:8px 10px; font:inherit; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:8px; }
+  input[readonly] { opacity:.7; }
+  .fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+  .row { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; }
+  .row > div { flex:1; min-width:200px; }
+  button, .btn { font:inherit; font-size:14px; padding:8px 14px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--text); cursor:pointer; text-decoration:none; display:inline-block; }
+  button.primary { background:var(--accent); color:var(--accent-text); border-color:var(--accent); font-weight:600; }
+  button:disabled { opacity:.5; cursor:default; }
+  .check { display:flex; gap:6px; align-items:center; font-size:13px; color:var(--muted); margin-top:8px; text-transform:none; letter-spacing:0; }
+  .check input { width:auto; }
+  #mode { font-size:13px; font-weight:600; margin:0 0 10px; }
+  #msg { display:none; padding:12px; border-radius:8px; margin-bottom:12px; font-size:14px; }
+  #msg.ok { display:block; background:color-mix(in srgb, var(--good) 15%, transparent); color:var(--good); }
+  #msg.err { display:block; background:color-mix(in srgb, var(--bad) 15%, transparent); color:var(--bad); }
+  details { margin-top:8px; font-size:13px; color:var(--muted); }
+  details li { margin:2px 0; }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <h1>Update Hosts</h1>
+    <div>
+      <a class="btn" href="./">← Dashboard</a>
+      <button id="theme" type="button" aria-label="Toggle dark mode"></button>
+    </div>
+  </div>
+  <p class="sub">Add a new host or update an existing one. Saving commits to the repo and the dashboard refreshes in about a minute.</p>
+  <div id="msg" role="status"></div>
+
+  <div class="card" id="tokenCard">
+    <h2>1. GitHub token</h2>
+    <p class="hint" id="tokenHint">Needed to save changes. It stays in this browser and is only sent to api.github.com.</p>
+    <div class="row">
+      <div><label for="token">Personal access token</label><input id="token" type="password" autocomplete="off" placeholder="github_pat_…"></div>
+      <button id="saveToken" type="button">Connect</button>
+    </div>
+    <label class="check"><input type="checkbox" id="remember" checked> Remember on this device</label>
+    <details>
+      <summary>How do I get a token?</summary>
+      <ol>
+        <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a></li>
+        <li>Repository access: <b>Only select repositories</b> → AssetManagementTesting</li>
+        <li>Permissions → Repository permissions → <b>Contents: Read and write</b></li>
+        <li>Generate the token and paste it above.</li>
+      </ol>
+    </details>
+  </div>
+
+  <div class="card" id="formCard" style="display:none">
+    <h2>2. Host details</h2>
+    <div class="row" style="margin-bottom:12px">
+      <div><label for="kind">Host type</label>
+        <select id="kind"><option value="endpoints.csv">Endpoint (laptop / desktop)</option><option value="servers.csv">Server</option></select></div>
+      <div><label for="lookup">Hostname</label>
+        <input id="lookup" list="hosts" autocomplete="off" placeholder="Type a new name, or pick an existing host to update"></div>
+    </div>
+    <datalist id="hosts"></datalist>
+    <p id="mode"></p>
+    <form id="form"><div class="fields" id="fields"></div>
+      <div style="margin-top:16px"><button class="primary" id="save" type="submit">Save</button></div>
+    </form>
+  </div>
+</main>
+<script>
+const REPO = 'ashikahmed4343/AssetManagementTesting', BRANCH = 'main';
+const API = 'https://api.github.com/repos/' + REPO + '/contents/';
+const $ = id => document.getElementById(id);
+
+// ---- theme (same behaviour as the dashboard) ----
+const root = document.documentElement;
+const isDark = () => root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+const syncButton = () => { $('theme').textContent = isDark() ? '☀ Light mode' : '☾ Dark mode'; };
+try { const t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') root.dataset.theme = t; } catch (e) {}
+$('theme').addEventListener('click', () => {
+  const next = isDark() ? 'light' : 'dark'; root.dataset.theme = next;
+  try { localStorage.setItem('theme', next); } catch (e) {}
+  syncButton();
+});
+syncButton();
+
+// ---- CSV helpers ----
+function parseCsv(text) {
+  const rows = []; let row = [], f = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(f); f = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
+    else f += c;
+  }
+  if (f !== '' || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(x => x !== ''));
+}
+const esc = v => /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+const toCsv = rows => rows.map(r => r.map(esc).join(',')).join('\n') + '\n';
+
+// ---- GitHub API ----
+let token = '';
+const b64dec = b => new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\n/g, '')), c => c.charCodeAt(0)));
+const b64enc = s => { const bytes = new TextEncoder().encode(s); let bin = ''; bytes.forEach(b => bin += String.fromCharCode(b)); return btoa(bin); };
+async function gh(path, opts = {}) {
+  const res = await fetch(API + path + (opts.method === 'PUT' ? '' : '?ref=' + BRANCH + '&t=' + Date.now()), {
+    ...opts, headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', ...(opts.headers || {}) } });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) { const e = new Error(body.message || ('HTTP ' + res.status)); e.status = res.status; throw e; }
+  return body;
+}
+async function loadFile(file) {
+  const j = await gh(file);
+  return { sha: j.sha, rows: parseCsv(b64dec(j.content)) };
+}
+
+// ---- form ----
+const OPTIONS = {
+  endpoints: { 'OS Family': ['Windows', 'macOS', 'Linux'], 'Status': ['Active', 'In Repair', 'Retired'], 'Type': ['Laptop', 'Desktop'],
+               'EDR Agent': ['CrowdStrike Falcon', 'Not Installed'], 'Disk Encrypted': ['Yes', 'No'] },
+  servers:   { 'OS Family': ['Windows Server', 'Linux', 'macOS'], 'Status': ['Active', 'Decommissioning'], 'Environment': ['Production', 'Staging', 'Dev'],
+               'EDR Agent': ['CrowdStrike Falcon', 'Not Installed'], 'Criticality': ['Tier 0', 'Tier 1', 'Tier 2', 'Tier 3'] }
+};
+const REQUIRED = ['Hostname', 'OS Family', 'Status', 'EDR Agent'];
+const todayIso = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const isDateCol = h => /date|seen|patched/i.test(h);
+
+let current = null; // { file, sha, rows }
+const group = () => $('kind').value === 'servers.csv' ? 'servers' : 'endpoints';
+
+function show(kind, text) { const m = $('msg'); m.className = kind; m.textContent = ''; m.append(text); }
+function clearMsg() { $('msg').className = ''; $('msg').textContent = ''; }
+
+function nextId(rows) {
+  const ids = rows.slice(1).map(r => r[0]); const prefix = (ids[0] || 'AST-0000').split('-')[0];
+  const max = ids.reduce((m, id) => Math.max(m, parseInt(String(id).split('-')[1], 10) || 0), 0);
+  return prefix + '-' + String(max + 1).padStart(4, '0');
+}
+function renderFields(values) {
+  const header = current.rows[0], box = $('fields'); box.textContent = '';
+  header.forEach((h, i) => {
+    const wrap = document.createElement('div'), lab = document.createElement('label'); lab.textContent = h + (REQUIRED.includes(h) ? ' *' : ''); lab.htmlFor = 'f' + i;
+    let el; const opts = OPTIONS[group()][h];
+    if (opts) {
+      el = document.createElement('select');
+      const val = values[i] || '';
+      const list = val && !opts.includes(val) ? [...opts, val] : opts;
+      if (!REQUIRED.includes(h)) el.append(new Option('', ''));
+      else if (!val) el.append(new Option('Select…', ''));
+      list.forEach(o => el.append(new Option(o, o)));
+      el.value = val;
+    } else {
+      el = document.createElement('input'); el.type = isDateCol(h) ? 'date' : 'text'; el.value = values[i] || '';
+    }
+    el.id = 'f' + i; el.dataset.col = h;
+    if (h === 'Asset ID') el.readOnly = true;
+    wrap.append(lab, el); box.append(wrap);
+  });
+}
+function hostRow(name) {
+  const hi = current.rows[0].indexOf('Hostname');
+  return current.rows.findIndex((r, i) => i > 0 && (r[hi] || '').toLowerCase() === name.trim().toLowerCase());
+}
+function refreshMode() {
+  const name = $('lookup').value, idx = name.trim() ? hostRow(name) : -1;
+  const header = current.rows[0];
+  let values;
+  if (idx > 0) {
+    values = current.rows[idx].slice(); $('mode').textContent = 'Updating existing host ' + values[0];
+  } else {
+    values = header.map(() => ''); values[0] = nextId(current.rows); values[header.indexOf('Hostname')] = name.trim();
+    const ls = header.indexOf('Last Seen'); if (ls >= 0) values[ls] = todayIso();
+    $('mode').textContent = name.trim() ? 'New host — will be added as ' + values[0] : '';
+  }
+  // keep any edits already typed when the user keeps typing a new name
+  renderFields(values);
+}
+async function loadKind() {
+  clearMsg(); $('mode').textContent = '';
+  try {
+    current = { file: $('kind').value, ...(await loadFile($('kind').value)) };
+    const hi = current.rows[0].indexOf('Hostname');
+    $('hosts').textContent = ''; current.rows.slice(1).forEach(r => $('hosts').append(new Option(r[hi])));
+    $('lookup').value = ''; renderFields(current.rows[0].map((h, i) => i === 0 ? nextId(current.rows) : (h === 'Last Seen' ? todayIso() : '')));
+  } catch (e) { show('err', 'Could not load ' + $('kind').value + ': ' + e.message); }
+}
+
+async function connect() {
+  token = $('token').value.trim(); if (!token) return show('err', 'Paste a token first.');
+  clearMsg(); $('saveToken').disabled = true;
+  try {
+    await gh('endpoints.csv');
+    try { $('remember').checked ? localStorage.setItem('gh_token', token) : localStorage.removeItem('gh_token'); } catch (e) {}
+    $('formCard').style.display = 'block'; $('tokenHint').textContent = 'Connected. The token stays in this browser only.';
+    $('saveToken').textContent = 'Reconnect'; await loadKind();
+  } catch (e) { show('err', e.status === 401 || e.status === 404 ? 'GitHub rejected that token (or it has no access to ' + REPO + ').' : 'Connection failed: ' + e.message); }
+  $('saveToken').disabled = false;
+}
+
+async function save(ev) {
+  ev.preventDefault(); clearMsg();
+  const header = current.rows[0], values = header.map((h, i) => $('f' + i).value.trim());
+  const missing = REQUIRED.filter(h => !values[header.indexOf(h)]);
+  if (missing.length) return show('err', 'Please fill in: ' + missing.join(', '));
+  $('save').disabled = true;
+  try {
+    // re-read just before writing so we never overwrite someone else's change
+    const fresh = await loadFile(current.file);
+    current = { file: current.file, ...fresh };
+    const hi = header.indexOf('Hostname'), idx = hostRow(values[hi]);
+    let verb;
+    if (idx > 0) { values[0] = current.rows[idx][0]; current.rows[idx] = values; verb = 'Updated'; }
+    else { values[0] = values[0] || nextId(current.rows); if (current.rows.slice(1).some(r => r[0] === values[0])) values[0] = nextId(current.rows); current.rows.push(values); verb = 'Added'; }
+    await gh(current.file, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      message: verb + ' host ' + values[hi] + ' (' + values[0] + ') via web form', content: b64enc(toCsv(current.rows)), sha: current.sha, branch: BRANCH }) });
+    show('ok', verb + ' ' + values[hi] + ' (' + values[0] + '). The dashboard will show it in about a minute.');
+    await loadKind();
+  } catch (e) {
+    show('err', e.status === 403 || e.status === 404 ? 'Save refused — the token needs "Contents: Read and write" on ' + REPO + '.' : 'Save failed: ' + e.message);
+  }
+  $('save').disabled = false;
+}
+
+$('saveToken').addEventListener('click', connect);
+$('token').addEventListener('keydown', e => { if (e.key === 'Enter') connect(); });
+$('kind').addEventListener('change', loadKind);
+$('lookup').addEventListener('change', refreshMode);
+$('form').addEventListener('submit', save);
+try { const t = localStorage.getItem('gh_token'); if (t) { $('token').value = t; connect(); } } catch (e) {}
+</script>
+</body>
+</html>
