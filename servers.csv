@@ -1,0 +1,27 @@
+Asset ID,Hostname,Role,OS Family,OS Version,Platform,Environment,vCPU,RAM (GB),IP Address,Data Center / Region,Owning Team,Owner,Criticality,Patch Cadence,Last Patched,EDR Agent,Backup,Status
+SRV-0001,WSRV-PRO-12,File Server,Windows Server,Windows Server 2016,Physical - HPE DL380,Production,64,16,10.124.172.212,AWS ap-south-1,IT Ops,Rohan Gupta,Tier 2,Not Patched,2026-07-21,CrowdStrike Falcon,Commvault,Active
+SRV-0002,WSRV-DEV-82,IIS Web Server,Windows Server,Windows Server 2019,Physical - Dell R750,Dev,16,128,10.110.82.173,Bengaluru DC,Engineering,Anita Das,Tier 2,Quarterly,2026-09-06,CrowdStrike Falcon,Veeam,Active
+SRV-0003,WSRV-PRO-41,SQL Server,Windows Server,Windows Server 2022,VMware VM,Production,32,256,10.126.252.2,Azure Central India,Finance,Aarav Mehta,Tier 1,Not Patched,2026-08-27,Not Installed,None,Active
+SRV-0004,WSRV-PRO-27,SQL Server,Windows Server,Windows Server 2016,AWS EC2,Production,16,128,10.128.178.126,Bengaluru DC,IT Ops,Divya Menon,Tier 1,Monthly,2026-09-03,CrowdStrike Falcon,Veeam,Active
+SRV-0005,WSRV-DEV-12,File Server,Windows Server,Windows Server 2019,Physical - Dell R750,Dev,4,32,10.115.238.185,AWS ap-south-1,Security,Karan Shah,Tier 2,Quarterly,2026-09-11,CrowdStrike Falcon,Veeam,Active
+SRV-0006,WSRV-PRO-77,Print Server,Windows Server,Windows Server 2016,AWS EC2,Production,4,64,10.124.202.220,Azure Central India,Security,Imran Khan,Tier 1,Monthly,2026-09-06,CrowdStrike Falcon,None,Active
+SRV-0007,WSRV-DEV-69,IIS Web Server,Windows Server,Windows Server 2022,Azure VM,Dev,64,256,10.112.116.240,AWS ap-south-1,Engineering,Sneha Iyer,Tier 3,Quarterly,2026-09-13,CrowdStrike Falcon,Veeam,Active
+SRV-0008,WSRV-DEV-91,IIS Web Server,Windows Server,Windows Server 2022,AWS EC2,Dev,32,16,10.104.128.249,AWS ap-south-1,IT Ops,Meera Pillai,Tier 0,Not Patched,2026-06-18,CrowdStrike Falcon,Veeam,Active
+SRV-0009,WSRV-DEV-84,File Server,Windows Server,Windows Server 2019,Physical - Dell R750,Dev,16,64,10.119.177.103,Bengaluru DC,Security,Imran Khan,Tier 2,Weekly,2026-07-24,CrowdStrike Falcon,Veeam,Decommissioning
+SRV-0010,WSRV-PRO-31,SQL Server,Windows Server,Windows Server 2019,VMware VM,Production,32,16,10.124.162.182,Bengaluru DC,Finance,Rohan Gupta,Tier 1,Monthly,2026-10-07,CrowdStrike Falcon,Veeam,Active
+SRV-0011,LSRV-UAT-48,Kubernetes Node,Linux,RHEL 9,AWS EC2,UAT,64,128,10.118.174.204,Mumbai DC,Engineering,Rohan Gupta,Tier 0,Not Patched,2026-06-23,CrowdStrike Falcon,Veeam,Active
+SRV-0012,LSRV-PRO-30,Kubernetes Node,Linux,Ubuntu 22.04 LTS,Physical - Dell R750,Production,16,16,10.128.205.121,AWS ap-south-1,Engineering,Priya Nair,Tier 2,Weekly,2026-07-29,CrowdStrike Falcon,None,Active
+SRV-0013,LSRV-DEV-39,App Server,Linux,Rocky Linux 9,Physical - Dell R750,Dev,4,32,10.112.146.93,AWS ap-south-1,Security,Aarav Mehta,Tier 2,Weekly,2026-10-11,Not Installed,Veeam,Decommissioning
+SRV-0014,LSRV-DEV-37,App Server,Linux,Ubuntu 22.04 LTS,AWS EC2,Dev,8,256,10.108.173.195,Mumbai DC,IT Ops,Aarav Mehta,Tier 1,Quarterly,2026-10-08,Not Installed,Commvault,Active
+SRV-0015,LSRV-PRO-38,PostgreSQL DB,Linux,Rocky Linux 9,AWS EC2,Production,8,32,10.125.138.226,AWS ap-south-1,Security,Rohan Gupta,Tier 1,Quarterly,2026-07-01,CrowdStrike Falcon,Commvault,Active
+SRV-0016,LSRV-DEV-10,App Server,Linux,RHEL 9,Physical - Dell R750,Dev,64,64,10.102.202.103,Bengaluru DC,Security,Imran Khan,Tier 0,Quarterly,2026-08-26,CrowdStrike Falcon,None,Active
+SRV-0017,LSRV-PRO-87,App Server,Linux,Rocky Linux 9,VMware VM,Production,64,256,10.110.234.158,Mumbai DC,IT Ops,Meera Pillai,Tier 1,Quarterly,2026-09-28,CrowdStrike Falcon,Veeam,Active
+SRV-0018,LSRV-UAT-64,Web Server (nginx),Linux,RHEL 8,AWS EC2,UAT,64,32,10.112.116.96,Azure Central India,Engineering,Karan Shah,Tier 0,Quarterly,2026-07-26,CrowdStrike Falcon,Commvault,Active
+SRV-0019,LSRV-UAT-28,Kubernetes Node,Linux,Rocky Linux 9,AWS EC2,UAT,16,16,10.121.94.141,AWS ap-south-1,IT Ops,Karan Shah,Tier 1,Monthly,2026-09-27,CrowdStrike Falcon,Veeam,Active
+SRV-0020,LSRV-PRO-07,PostgreSQL DB,Linux,RHEL 9,AWS EC2,Production,64,32,10.102.212.197,Mumbai DC,Engineering,Sneha Iyer,Tier 1,Monthly,2026-07-04,Not Installed,Veeam,Active
+SRV-0021,LSRV-PRO-17,Jump Host,Linux,Ubuntu 22.04 LTS,AWS EC2,Production,4,16,10.104.3.93,Mumbai DC,Security,Aarav Mehta,Tier 1,Weekly,2026-10-06,CrowdStrike Falcon,None,Active
+SRV-0022,LSRV-PRO-96,Web Server (nginx),Linux,Rocky Linux 9,Physical - Dell R750,Production,16,256,10.118.27.117,Mumbai DC,IT Ops,Imran Khan,Tier 1,Quarterly,2026-07-22,CrowdStrike Falcon,Veeam,Active
+SRV-0023,LSRV-DEV-55,Log Collector,Linux,RHEL 8,Physical - Dell R750,Dev,32,16,10.128.20.84,Mumbai DC,IT Ops,Rohan Gupta,Tier 1,Not Patched,2026-07-23,Not Installed,Commvault,Active
+SRV-0024,LSRV-UAT-59,Jump Host,Linux,Rocky Linux 9,VMware VM,UAT,4,256,10.123.221.57,Azure Central India,Finance,Sneha Iyer,Tier 2,Weekly,2026-06-29,CrowdStrike Falcon,None,Active
+SRV-0025,MSRV-DEV-41,CI Build Runner,macOS,macOS 14 Server Host,Physical - Dell R750,Dev,16,64,10.130.39.177,Azure Central India,IT Ops,Priya Nair,Tier 0,Monthly,2026-08-18,CrowdStrike Falcon,Commvault,Active
+SRV-0026,MSRV-DEV-76,CI Build Runner,macOS,macOS 14 Server Host,Physical - Dell R750,Dev,32,64,10.127.170.242,Azure Central India,IT Ops,Vikram Rao,Tier 3,Weekly,2026-08-28,CrowdStrike Falcon,Veeam,Active

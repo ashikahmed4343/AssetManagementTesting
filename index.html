@@ -52,22 +52,34 @@
   </div>
 </main>
 <script>
-const FILE = 'company_assets_sample.xlsx';
+const FILES = ['endpoints.csv', 'servers.csv'];
 const OS = [['Windows','Windows','Windows Server'],['macOS','macOS','macOS'],['Linux','Linux','Linux']];
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
-function rows(wb, name) {
-  const ws = wb.Sheets[name];
-  if (!ws) throw new Error('Sheet "' + name + '" not found in ' + FILE);
-  return XLSX.utils.sheet_to_json(ws, { defval: null });
+async function loadCsv(file) {
+  const res = await fetch(file + '?t=' + Date.now());
+  if (!res.ok) throw new Error('Could not load ' + file + ' (HTTP ' + res.status + ')');
+  const wb = XLSX.read(await res.text(), { type: 'string', raw: true });
+  return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: null, raw: true })
+    .map(r => Object.fromEntries(Object.entries(r).map(([k, v]) => [k.trim(), typeof v === 'string' ? v.trim() : v])))
+    .filter(r => r['Asset ID']);
+}
+// Accepts 2026-10-12, 12/10/2026, 12-Oct-2026, 12/Oct/26
+function parseDate(v) {
+  if (v == null || v === '') return null;
+  let m;
+  if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(v))) return new Date(+m[1], m[2] - 1, +m[3]);
+  if ((m = /^(\d{1,2})[\/-]([A-Za-z]{3})[a-z]*[\/-](\d{2,4})$/.exec(v))) {
+    const mo = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(m[2].toLowerCase());
+    return mo < 0 ? null : new Date(m[3].length === 2 ? 2000 + +m[3] : +m[3], mo, +m[1]);
+  }
+  if ((m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(v))) return new Date(+m[3], m[2] - 1, +m[1]);
+  return null;
 }
 const hasEdr = v => v != null && String(v).trim() !== '' && v !== 'Not Installed';
 
 async function main() {
-  const res = await fetch(FILE + '?t=' + Date.now());
-  if (!res.ok) throw new Error('Could not load ' + FILE + ' (HTTP ' + res.status + ')');
-  const wb = XLSX.read(await res.arrayBuffer(), { cellDates: true });
-  const E = rows(wb, 'Endpoints'), S = rows(wb, 'Servers');
+  const [E, S] = await Promise.all(FILES.map(loadCsv));
 
   const stats = OS.map(([label, e, s]) => {
     const te = E.filter(r => r['OS Family'] === e), ts = S.filter(r => r['OS Family'] === s);
@@ -83,12 +95,12 @@ async function main() {
   const now = new Date(), months = [];
   for (let i = 11; i >= 0; i--) months.push(new Date(now.getFullYear(), now.getMonth() - i, 1));
   const seen = months.map(m => E.filter(r => {
-    const d = r['Last Seen']; return d instanceof Date && d.getFullYear() === m.getFullYear() && d.getMonth() === m.getMonth();
+    const d = parseDate(r['Last Seen']); return d && d.getFullYear() === m.getFullYear() && d.getMonth() === m.getMonth();
   }).length);
   const monthLabels = months.map(m => m.toLocaleString('en', { month: 'short', year: 'numeric' }));
 
   document.getElementById('sub').textContent =
-    E.length + ' endpoints + ' + S.length + ' servers · read live from ' + FILE + ' · refreshed ' + now.toLocaleString();
+    E.length + ' endpoints + ' + S.length + ' servers · read live from ' + FILES.join(' + ') + ' · refreshed ' + now.toLocaleString();
 
   const tile = (l, v) => '<div class="tile"><div class="l">' + l + '</div><div class="v">' + v + '</div></div>';
   document.getElementById('tiles').innerHTML =
