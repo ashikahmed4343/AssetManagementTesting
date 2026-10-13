@@ -33,6 +33,7 @@
   .row > div { flex:1; min-width:200px; }
   button, .btn { font:inherit; font-size:14px; padding:8px 14px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--text); cursor:pointer; text-decoration:none; display:inline-block; }
   button.primary { background:var(--accent); color:var(--accent-text); border-color:var(--accent); font-weight:600; }
+  button.danger { color:var(--bad); border-color:var(--bad); margin-left:8px; }
   button:disabled { opacity:.5; cursor:default; }
   .check { display:flex; gap:6px; align-items:center; font-size:13px; color:var(--muted); margin-top:8px; text-transform:none; letter-spacing:0; }
   .check input { width:auto; }
@@ -86,7 +87,7 @@
     <datalist id="hosts"></datalist>
     <p id="mode"></p>
     <form id="form"><div class="fields" id="fields"></div>
-      <div style="margin-top:16px"><button class="primary" id="save" type="submit">Save</button></div>
+      <div style="margin-top:16px"><button class="primary" id="save" type="submit">Save</button><button class="danger" id="del" type="button" style="display:none">Delete host</button></div>
     </form>
   </div>
 </main>
@@ -191,9 +192,10 @@ function hostRow(name) {
 function refreshMode() {
   const name = $('lookup').value, idx = name.trim() ? hostRow(name) : -1;
   const header = current.rows[0];
+  $('del').style.display = 'none';
   let values;
   if (idx > 0) {
-    values = current.rows[idx].slice(); $('mode').textContent = 'Updating existing host ' + values[0];
+    values = current.rows[idx].slice(); $('mode').textContent = 'Updating existing host ' + values[0]; $('del').style.display = '';
   } else {
     values = header.map(() => ''); values[0] = nextId(current.rows); values[header.indexOf('Hostname')] = name.trim();
     const ls = header.indexOf('Last Seen'); if (ls >= 0) values[ls] = todayIso();
@@ -203,7 +205,7 @@ function refreshMode() {
   renderFields(values);
 }
 async function loadKind() {
-  clearMsg(); $('mode').textContent = '';
+  clearMsg(); $('mode').textContent = ''; $('del').style.display = 'none';
   try {
     current = { file: $('kind').value, ...(await loadFile($('kind').value)) };
     const hi = current.rows[0].indexOf('Hostname');
@@ -248,6 +250,29 @@ async function save(ev) {
   $('save').disabled = false;
 }
 
+async function del() {
+  const header = current.rows[0], name = $('lookup').value.trim(), idx = hostRow(name);
+  if (idx < 1) return show('err', 'Pick an existing host to delete.');
+  const id = current.rows[idx][0];
+  if (!confirm('Delete ' + name + ' (' + id + ')?\n\nIt will be removed from the dashboard. It can be restored from the repo history, not from this page.')) return;
+  clearMsg(); $('del').disabled = $('save').disabled = true;
+  try {
+    const fresh = await loadFile(current.file);
+    current = { file: current.file, ...fresh };
+    const j = hostRow(name);
+    if (j < 1) throw new Error(name + ' no longer exists.');
+    const removedId = current.rows[j][0];
+    current.rows.splice(j, 1);
+    await gh(current.file, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      message: 'Deleted host ' + name + ' (' + removedId + ') via web form', content: b64enc(toCsv(current.rows)), sha: current.sha, branch: BRANCH }) });
+    show('ok', 'Deleted ' + name + ' (' + removedId + '). The dashboard will update in about a minute.');
+    await loadKind();
+  } catch (e) {
+    show('err', e.status === 403 || e.status === 404 ? 'Delete refused — the token needs "Contents: Read and write" on ' + REPO + '.' : 'Delete failed: ' + e.message);
+  }
+  $('del').disabled = $('save').disabled = false;
+}
+$('del').addEventListener('click', del);
 $('saveToken').addEventListener('click', connect);
 $('token').addEventListener('keydown', e => { if (e.key === 'Enter') connect(); });
 $('kind').addEventListener('change', loadKind);
