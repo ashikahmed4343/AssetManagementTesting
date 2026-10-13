@@ -25,3 +25,4 @@ SRV-0023,LSRV-DEV-55,Log Collector,Linux,RHEL 8,Physical - Dell R750,Dev,32,16,1
 SRV-0024,LSRV-UAT-59,Jump Host,Linux,Rocky Linux 9,VMware VM,UAT,4,256,10.123.221.57,Azure Central India,Finance,Sneha Iyer,Tier 2,Weekly,2026-06-29,CrowdStrike Falcon,None,Active
 SRV-0025,MSRV-DEV-41,CI Build Runner,macOS,macOS 14 Server Host,Physical - Dell R750,Dev,16,64,10.130.39.177,Azure Central India,IT Ops,Priya Nair,Tier 0,Monthly,2026-08-18,CrowdStrike Falcon,Commvault,Active
 SRV-0026,MSRV-DEV-76,CI Build Runner,macOS,macOS 14 Server Host,Physical - Dell R750,Dev,32,64,10.127.170.242,Azure Central India,IT Ops,Vikram Rao,Tier 3,Weekly,2026-08-28,CrowdStrike Falcon,Veeam,Active
+SRV-0027,Ashik Server,,macOS,,,Production,,,,,,,,,2026-10-13,CrowdStrike Falcon,,Active
