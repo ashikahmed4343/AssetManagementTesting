@@ -10,13 +10,21 @@
   :root { --bg:#f6f7f9; --card:#fff; --text:#1d2939; --muted:#667085; --line:#e4e7ec;
           --c1:#1f3a5f; --c2:#2e8b8b; --c3:#d98e04; --bad:#c0392b; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#101828; --card:#1d2939; --text:#f2f4f7; --muted:#98a2b3; --line:#344054;
+    :root:not([data-theme="light"]) { --bg:#101828; --card:#1d2939; --text:#f2f4f7; --muted:#98a2b3; --line:#344054;
             --c1:#6ea8fe; --c2:#4fd1c5; --c3:#f6ad55; --bad:#fc8181; }
   }
+  :root[data-theme="dark"] { --bg:#101828; --card:#1d2939; --text:#f2f4f7; --muted:#98a2b3; --line:#344054;
+          --c1:#6ea8fe; --c2:#4fd1c5; --c3:#f6ad55; --bad:#fc8181; }
+  :root { color-scheme: light dark; }
+  :root[data-theme="light"] { color-scheme: light; }
+  :root[data-theme="dark"] { color-scheme: dark; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
   main { max-width:1100px; margin:0 auto; padding:24px 16px 48px; }
+  .top { display:flex; align-items:center; justify-content:space-between; gap:12px; }
   h1 { margin:0; font-size:26px; }
+  #theme { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:6px 12px; font:inherit; font-size:13px; cursor:pointer; }
+  #theme:hover { border-color:var(--muted); }
   .sub { color:var(--muted); margin:4px 0 20px; font-size:13px; }
   .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:16px; }
   .tile, .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
@@ -34,7 +42,10 @@
 </head>
 <body>
 <main>
-  <h1>Asset Dashboard</h1>
+  <div class="top">
+    <h1>Asset Dashboard</h1>
+    <button id="theme" type="button" aria-label="Toggle dark mode"></button>
+  </div>
   <p class="sub" id="sub">Loading…</p>
   <div id="err"></div>
   <div class="tiles" id="tiles"></div>
@@ -76,6 +87,19 @@ function parseDate(v) {
   if ((m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(v))) return new Date(+m[3], m[2] - 1, +m[1]);
   return null;
 }
+const root = document.documentElement;
+const isDark = () => root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+function syncButton() { document.getElementById('theme').textContent = isDark() ? '☀ Light mode' : '☾ Dark mode'; }
+try { const t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') root.dataset.theme = t; } catch (e) {}
+let redraw = null;
+document.getElementById('theme').addEventListener('click', () => {
+  const next = isDark() ? 'light' : 'dark';
+  root.dataset.theme = next;
+  try { localStorage.setItem('theme', next); } catch (e) {}
+  syncButton(); if (redraw) redraw();
+});
+syncButton();
+
 const hasEdr = v => v != null && String(v).trim() !== '' && v !== 'Not Installed';
 
 async function main() {
@@ -112,23 +136,28 @@ async function main() {
     stats.map(s => '<tr><td>' + s.label + '</td><td>' + s.total + '</td><td>' + s.active + '</td><td>' + s.edr + '</td><td>' + s.noEdr + '</td></tr>').join('') +
     '</tbody><tfoot><tr><td>Total</td><td>' + T.total + '</td><td>' + T.active + '</td><td>' + T.edr + '</td><td>' + T.noEdr + '</td></tr></tfoot>';
 
+  const charts = [];
+  redraw = () => {
+  charts.splice(0).forEach(c => c.destroy());
   Chart.defaults.color = css('--muted');
   Chart.defaults.borderColor = css('--line');
   const opts = { responsive: true, maintainAspectRatio: false };
   const labels = stats.map(s => s.label);
-  new Chart('c1', { type: 'bar', options: opts, data: { labels, datasets: [
+  charts.push(new Chart('c1', { type: 'bar', options: opts, data: { labels, datasets: [
     { label: 'Total', data: stats.map(s => s.total), backgroundColor: css('--c1') },
     { label: 'Active', data: stats.map(s => s.active), backgroundColor: css('--c2') },
-    { label: 'EDR installed', data: stats.map(s => s.edr), backgroundColor: css('--c3') }] } });
-  new Chart('c2', { type: 'doughnut', options: opts, data: { labels, datasets: [
-    { data: stats.map(s => s.total), backgroundColor: [css('--c1'), css('--c2'), css('--c3')], borderColor: css('--card') }] } });
-  new Chart('c3', { type: 'bar', data: { labels, datasets: [
+    { label: 'EDR installed', data: stats.map(s => s.edr), backgroundColor: css('--c3') }] } }));
+  charts.push(new Chart('c2', { type: 'doughnut', options: opts, data: { labels, datasets: [
+    { data: stats.map(s => s.total), backgroundColor: [css('--c1'), css('--c2'), css('--c3')], borderColor: css('--card') }] } }));
+  charts.push(new Chart('c3', { type: 'bar', data: { labels, datasets: [
     { label: 'EDR installed', data: stats.map(s => s.edr), backgroundColor: css('--c2') },
     { label: 'No EDR', data: stats.map(s => s.noEdr), backgroundColor: css('--bad') }] },
-    options: { ...opts, indexAxis: 'y', scales: { x: { stacked: true }, y: { stacked: true } } } });
-  new Chart('c4', { type: 'bar', data: { labels: monthLabels, datasets: [
+    options: { ...opts, indexAxis: 'y', scales: { x: { stacked: true }, y: { stacked: true } } } }));
+  charts.push(new Chart('c4', { type: 'bar', data: { labels: monthLabels, datasets: [
     { label: 'Endpoints', data: seen, backgroundColor: css('--c1') }] },
-    options: { ...opts, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } });
+    options: { ...opts, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } }));
+  };
+  redraw();
 }
 main().catch(e => {
   document.getElementById('sub').textContent = '';
