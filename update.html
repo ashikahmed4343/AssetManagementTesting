@@ -40,6 +40,7 @@
   #mode { font-size:13px; font-weight:600; margin:0 0 10px; }
   #msg { display:none; padding:12px; border-radius:8px; margin-bottom:12px; font-size:14px; }
   #msg.ok { display:block; background:color-mix(in srgb, var(--good) 15%, transparent); color:var(--good); }
+  #msg.warn { display:block; background:color-mix(in srgb, #d98e04 18%, transparent); color:var(--text); border-left:4px solid #d98e04; }
   #msg.err { display:block; background:color-mix(in srgb, var(--bad) 15%, transparent); color:var(--bad); }
   details { margin-top:8px; font-size:13px; color:var(--muted); }
   details li { margin:2px 0; }
@@ -59,6 +60,7 @@
 
   <div class="card" id="tokenCard">
     <h2>1. GitHub token</h2>
+    <p class="hint" id="notifState"></p>
     <p class="hint" id="tokenHint">Needed to save changes. It stays in this browser and is only sent to api.github.com.</p>
     <div class="row">
       <div><label for="token">Personal access token</label><input id="token" type="password" autocomplete="off" placeholder="github_pat_…"></div>
@@ -158,7 +160,37 @@ const isDateCol = h => /date|seen|patched/i.test(h);
 let current = null; // { file, sha, rows }
 const group = () => $('kind').value === 'servers.csv' ? 'servers' : 'endpoints';
 
-function show(kind, text) { const m = $('msg'); m.className = kind; m.textContent = ''; m.append(text); }
+// ---- browser notifications (success, warnings and errors) ----
+const canNotify = () => typeof Notification !== 'undefined';
+function notifyState() {
+  const el = $('notifState'); if (!el) return;
+  el.textContent = !canNotify() ? 'Notifications are not supported in this browser.'
+    : Notification.permission === 'granted' ? 'Notifications: on'
+    : Notification.permission === 'denied' ? 'Notifications: blocked — allow them in your browser\'s site settings.' : 'Notifications: off (you will be asked to allow them)';
+}
+async function askNotify() {
+  if (canNotify() && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch (e) {} }
+  notifyState();
+}
+function notify(kind, text) {
+  if (!canNotify() || Notification.permission !== 'granted') return;
+  const title = kind === 'ok' ? 'Host updated' : kind === 'warn' ? 'Host saved — please review' : 'Asset update failed';
+  try { new Notification(title, { body: text, tag: 'asset-update' }); } catch (e) {}
+}
+function show(kind, text) { const m = $('msg'); m.className = kind; m.textContent = ''; m.append(text); notify(kind, text); }
+
+// Flags values that look like passwords or secrets. Warns only; it never blocks a save.
+function suspicious(header, values) {
+  const out = [];
+  header.forEach((h, i) => {
+    const v = values[i] || '';
+    if (!v || h === 'Asset ID') return;
+    const keyword = /\b(pass(word|wd)?|pwd|secret|api[-_ ]?key|token)\b/i.test(v);
+    const passwordish = !/\s/.test(v) && /[a-z]/.test(v) && /[A-Z]/.test(v) && /\d/.test(v) && /[@#$%^&*!]/.test(v) && !/@[^@]*\./.test(v);
+    if (keyword || passwordish) out.push("'" + h + "' (" + v.slice(0, 2) + '•••)');
+  });
+  return out.length ? 'possible password or secret in ' + out.join(', ') + ' — this repo is public' : '';
+}
 function clearMsg() { $('msg').className = ''; $('msg').textContent = ''; }
 
 const serverDefault = h => h === 'USB Block Status' && group() === 'servers' ? 'Not Applicable' : '';
@@ -208,8 +240,8 @@ function refreshMode() {
   // keep any edits already typed when the user keeps typing a new name
   renderFields(values);
 }
-async function loadKind() {
-  clearMsg(); $('mode').textContent = ''; $('del').style.display = 'none';
+async function loadKind(keepMsg) {
+  if (!keepMsg) clearMsg(); $('mode').textContent = ''; $('del').style.display = 'none';
   try {
     current = { file: $('kind').value, ...(await loadFile($('kind').value)) };
     const hi = current.rows[0].indexOf('Hostname');
@@ -219,6 +251,7 @@ async function loadKind() {
 }
 
 async function connect() {
+  askNotify();
   token = $('token').value.trim(); if (!token) return show('err', 'Paste a token first.');
   clearMsg(); $('saveToken').disabled = true;
   try {
@@ -231,7 +264,7 @@ async function connect() {
 }
 
 async function save(ev) {
-  ev.preventDefault(); clearMsg();
+  ev.preventDefault(); clearMsg(); askNotify();
   const header = current.rows[0], values = header.map((h, i) => $('f' + i).value.trim());
   const missing = REQUIRED.filter(h => !values[header.indexOf(h)]);
   if (missing.length) return show('err', 'Please fill in: ' + missing.join(', '));
@@ -246,8 +279,10 @@ async function save(ev) {
     else { values[0] = values[0] || nextId(current.rows); if (current.rows.slice(1).some(r => r[0] === values[0])) values[0] = nextId(current.rows); current.rows.push(values); verb = 'Added'; }
     await gh(current.file, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
       message: verb + ' host ' + values[hi] + ' (' + values[0] + ') via web form', content: b64enc(toCsv(current.rows)), sha: current.sha, branch: BRANCH }) });
-    show('ok', verb + ' ' + values[hi] + ' (' + values[0] + '). The dashboard will show it in about a minute.');
-    await loadKind();
+    const warn = suspicious(header, values);
+    const done = verb + ' ' + values[hi] + ' (' + values[0] + '). The dashboard will show it in about a minute.';
+    if (warn) show('warn', done + ' Warning: ' + warn + '.'); else show('ok', done);
+    await loadKind(true);
   } catch (e) {
     show('err', e.status === 403 || e.status === 404 ? 'Save refused — the token needs "Contents: Read and write" on ' + REPO + '.' : 'Save failed: ' + e.message);
   }
@@ -270,16 +305,17 @@ async function del() {
     await gh(current.file, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
       message: 'Deleted host ' + name + ' (' + removedId + ') via web form', content: b64enc(toCsv(current.rows)), sha: current.sha, branch: BRANCH }) });
     show('ok', 'Deleted ' + name + ' (' + removedId + '). The dashboard will update in about a minute.');
-    await loadKind();
+    await loadKind(true);
   } catch (e) {
     show('err', e.status === 403 || e.status === 404 ? 'Delete refused — the token needs "Contents: Read and write" on ' + REPO + '.' : 'Delete failed: ' + e.message);
   }
   $('del').disabled = $('save').disabled = false;
 }
 $('del').addEventListener('click', del);
+notifyState();
 $('saveToken').addEventListener('click', connect);
 $('token').addEventListener('keydown', e => { if (e.key === 'Enter') connect(); });
-$('kind').addEventListener('change', loadKind);
+$('kind').addEventListener('change', () => loadKind());
 $('lookup').addEventListener('change', refreshMode);
 $('form').addEventListener('submit', save);
 try { const t = localStorage.getItem('gh_token'); if (t) { $('token').value = t; connect(); } } catch (e) {}
