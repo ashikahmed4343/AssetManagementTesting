@@ -126,7 +126,7 @@ async function main() {
   document.getElementById('tiles').innerHTML =
     tile('Total assets', T.total) + tile('Active', T.active) + tile('With EDR', T.edr) +
     tile('EDR coverage', T.total ? Math.round(100 * T.edr / T.total) + '%' : '0%') + tile('Without EDR', T.noEdr) +
-    tile('In repair', countStatus('In Repair')) + tile('Retired', countStatus('Retired'));
+    tile('In repair', countStatus('In Repair')) + tile('Retired', countStatus('Retired')) + tile('Decommissioning', countStatus('Decommissioning'));
 
   document.getElementById('tbl').innerHTML =
     '<thead><tr><th>OS</th><th>Total</th><th>Active</th><th>EDR installed</th><th>No EDR</th></tr></thead><tbody>' +
