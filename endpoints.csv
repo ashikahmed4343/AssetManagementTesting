@@ -47,3 +47,4 @@ AST-0045,LNX-8438,Laptop,Linux,Ubuntu 22.04 LTS,System76 Lemur Pro,SN41329612,10
 AST-0046,LNX-5728,Laptop,Linux,Ubuntu 24.04 LTS,Dell XPS 15,SN72907576,10.54.77.181,32:44:73:66:AB:20,Divya Menon,Engineering,Hyderabad,Active,2025-09-09,2028-09-08,Not Installed,Ansible,Yes,2026-10-12,Not Applicable
 AST-0047,Ashik 2,Desktop,macOS,,,,,,,,,Retired,,,CrowdStrike Falcon,,Yes,2026-10-14,JAMF USB Not Enabled
 AST-0048,AshkDesktop3,Desktop,macOS,,,Password@123,,,,,,Active,,,CrowdStrike Falcon,,No,2026-10-14,
+AST-0049,Ashik Laptop 4,Laptop,macOS,,,Password@123,,,,,,In Repair,,,Not Installed,123@Pass!,,2026-10-14,
