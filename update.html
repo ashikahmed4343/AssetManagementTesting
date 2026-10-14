@@ -145,9 +145,11 @@ async function loadFile(file) {
 // ---- form ----
 const OPTIONS = {
   endpoints: { 'OS Family': ['Windows', 'macOS', 'Linux'], 'Status': ['Active', 'In Repair', 'Retired'], 'Type': ['Laptop', 'Desktop'],
-               'EDR Agent': ['CrowdStrike Falcon', 'Not Installed'], 'Disk Encrypted': ['Yes', 'No'] },
+               'EDR Agent': ['CrowdStrike Falcon', 'Not Installed'], 'Disk Encrypted': ['Yes', 'No'],
+               'USB Block Status': ['JAMF USB Enabled', 'JAMF USB Not Enabled', 'CS Device Control Policy Enabled', 'CS Device Control Policy Not Enabled', 'Not Applicable'] },
   servers:   { 'OS Family': ['Windows Server', 'Linux', 'macOS'], 'Status': ['Active', 'Decommissioning'], 'Environment': ['Production', 'Staging', 'Dev'],
-               'EDR Agent': ['CrowdStrike Falcon', 'Not Installed'], 'Criticality': ['Tier 0', 'Tier 1', 'Tier 2', 'Tier 3'] }
+               'EDR Agent': ['CrowdStrike Falcon', 'Not Installed'], 'Criticality': ['Tier 0', 'Tier 1', 'Tier 2', 'Tier 3'],
+               'USB Block Status': ['Not Applicable'] }
 };
 const REQUIRED = ['Hostname', 'OS Family', 'Status', 'EDR Agent'];
 const todayIso = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
@@ -159,6 +161,7 @@ const group = () => $('kind').value === 'servers.csv' ? 'servers' : 'endpoints';
 function show(kind, text) { const m = $('msg'); m.className = kind; m.textContent = ''; m.append(text); }
 function clearMsg() { $('msg').className = ''; $('msg').textContent = ''; }
 
+const serverDefault = h => h === 'USB Block Status' && group() === 'servers' ? 'Not Applicable' : '';
 function nextId(rows) {
   const ids = rows.slice(1).map(r => r[0]); const prefix = (ids[0] || 'AST-0000').split('-')[0];
   const max = ids.reduce((m, id) => Math.max(m, parseInt(String(id).split('-')[1], 10) || 0), 0);
@@ -199,6 +202,7 @@ function refreshMode() {
   } else {
     values = header.map(() => ''); values[0] = nextId(current.rows); values[header.indexOf('Hostname')] = name.trim();
     const ls = header.indexOf('Last Seen'); if (ls >= 0) values[ls] = todayIso();
+    header.forEach((h, i) => { if (!values[i]) values[i] = serverDefault(h); });
     $('mode').textContent = name.trim() ? 'New host — will be added as ' + values[0] : '';
   }
   // keep any edits already typed when the user keeps typing a new name
@@ -210,7 +214,7 @@ async function loadKind() {
     current = { file: $('kind').value, ...(await loadFile($('kind').value)) };
     const hi = current.rows[0].indexOf('Hostname');
     $('hosts').textContent = ''; current.rows.slice(1).forEach(r => $('hosts').append(new Option(r[hi])));
-    $('lookup').value = ''; renderFields(current.rows[0].map((h, i) => i === 0 ? nextId(current.rows) : (h === 'Last Seen' ? todayIso() : '')));
+    $('lookup').value = ''; renderFields(current.rows[0].map((h, i) => i === 0 ? nextId(current.rows) : (h === 'Last Seen' ? todayIso() : serverDefault(h))));
   } catch (e) { show('err', 'Could not load ' + $('kind').value + ': ' + e.message); }
 }
 

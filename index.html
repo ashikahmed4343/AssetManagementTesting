@@ -33,6 +33,8 @@
   .tile .v { font-size:30px; font-weight:700; }
   .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px; margin-bottom:12px; }
   .card h2 { margin:0 0 10px; font-size:15px; }
+  .section { font-size:18px; margin:20px 0 10px; }
+  .note { color:var(--muted); font-size:12px; margin:10px 0 0; }
   .chart { position:relative; height:260px; }
   table { width:100%; border-collapse:collapse; font-size:14px; }
   th, td { padding:6px 8px; text-align:right; border-bottom:1px solid var(--line); }
@@ -50,6 +52,16 @@
   <p class="sub" id="sub">Loading…</p>
   <div id="err"></div>
   <div class="tiles" id="tiles"></div>
+  <h2 class="section">USB block coverage</h2>
+  <div class="tiles" id="usbTiles"></div>
+  <div class="grid">
+    <div class="card"><h2>USB block by tool</h2><div class="chart"><canvas id="c5" role="img" aria-label="Hosts with USB block enabled versus missing, for JAMF and CrowdStrike"></canvas></div></div>
+    <div class="card"><h2>JAMF and CrowdStrike hosts</h2>
+      <table id="usbTbl"></table>
+      <p class="note">Macs in both tools are evaluated under JAMF, so CrowdStrike's enabled / missing figures cover the other hosts. A host without a confirmed "Enabled" status counts as missing.</p>
+    </div>
+  </div>
+  <h2 class="section">Assets</h2>
   <div class="grid">
     <div class="card"><h2>Assets by OS</h2><div class="chart"><canvas id="c1" role="img" aria-label="Assets by OS: total, active and EDR installed"></canvas></div></div>
     <div class="card"><h2>OS share of total assets</h2><div class="chart"><canvas id="c2" role="img" aria-label="OS share of total assets"></canvas></div></div>
@@ -137,6 +149,23 @@ async function main() {
     stats.map(s => '<tr><td>' + s.label + '</td><td>' + s.total + '</td><td>' + s.active + '</td><td>' + s.edr + '</td><td>' + s.noEdr + '</td></tr>').join('') +
     '</tbody><tfoot><tr><td>Total</td><td>' + T.total + '</td><td>' + T.active + '</td><td>' + T.edr + '</td><td>' + T.noEdr + '</td></tr></tfoot>';
 
+  const usb = r => String(r['USB Block Status'] || '').trim();
+  const jamf = E.filter(r => r['MDM / Mgmt'] === 'JAMF');
+  const cs = E.filter(r => hasEdr(r['EDR Agent']));
+  const csOnly = cs.filter(r => r['MDM / Mgmt'] !== 'JAMF');
+  const tool = (name, present, evaluated, okValue) => {
+    const enabled = evaluated.filter(r => usb(r) === okValue).length;
+    return { name, present: present.length, evaluated: evaluated.length, enabled, missing: evaluated.length - enabled };
+  };
+  const U = [tool('JAMF', jamf, jamf, 'JAMF USB Enabled'), tool('CrowdStrike', cs, csOnly, 'CS Device Control Policy Enabled')];
+  const missingTotal = U[0].missing + U[1].missing;
+  document.getElementById('usbTiles').innerHTML =
+    tile('Hosts in JAMF', U[0].present) + tile('Hosts in CrowdStrike', U[1].present) + tile('USB block missing', missingTotal);
+  document.getElementById('usbTbl').innerHTML =
+    '<thead><tr><th>Tool</th><th>Hosts</th><th>Evaluated</th><th>Enabled</th><th>Missing</th><th>Covered</th></tr></thead><tbody>' +
+    U.map(u => '<tr><td>' + u.name + '</td><td>' + u.present + '</td><td>' + u.evaluated + '</td><td>' + u.enabled + '</td><td>' + u.missing + '</td><td>' +
+      (u.evaluated ? Math.round(100 * u.enabled / u.evaluated) + '%' : '–') + '</td></tr>').join('') + '</tbody>';
+
   const charts = [];
   redraw = () => {
   charts.splice(0).forEach(c => c.destroy());
@@ -144,6 +173,10 @@ async function main() {
   Chart.defaults.borderColor = css('--line');
   const opts = { responsive: true, maintainAspectRatio: false };
   const labels = stats.map(s => s.label);
+  charts.push(new Chart('c5', { type: 'bar', data: { labels: U.map(u => u.name), datasets: [
+    { label: 'USB block enabled', data: U.map(u => u.enabled), backgroundColor: css('--c2') },
+    { label: 'USB block missing', data: U.map(u => u.missing), backgroundColor: css('--bad') }] },
+    options: { ...opts, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } } }));
   charts.push(new Chart('c1', { type: 'bar', options: opts, data: { labels, datasets: [
     { label: 'Total', data: stats.map(s => s.total), backgroundColor: css('--c1') },
     { label: 'Active', data: stats.map(s => s.active), backgroundColor: css('--c2') },
