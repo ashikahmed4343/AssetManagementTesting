@@ -61,11 +61,7 @@
   <h2 class="section">Assets</h2>
   <div class="grid">
     <div class="card"><h2>Assets by OS</h2><div class="chart"><canvas id="c1" role="img" aria-label="Assets by OS: total, active and EDR installed"></canvas></div></div>
-    <div class="card"><h2>OS share of total assets</h2><div class="chart"><canvas id="c2" role="img" aria-label="OS share of total assets"></canvas></div></div>
-  </div>
-  <div class="grid">
     <div class="card"><h2>EDR coverage by OS</h2><div class="chart"><canvas id="c3" role="img" aria-label="EDR installed versus missing by OS"></canvas></div></div>
-    <div class="card"><h2>Endpoints last seen, by month</h2><div class="chart"><canvas id="c4" role="img" aria-label="Endpoints last seen per month"></canvas></div></div>
   </div>
   <div class="card">
     <h2>Assets by OS (endpoints + servers)</h2>
@@ -93,18 +89,6 @@ async function loadCsv(file) {
   return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: null, raw: true })
     .map(r => Object.fromEntries(Object.entries(r).map(([k, v]) => [k.trim(), typeof v === 'string' ? v.trim() : v])))
     .filter(r => r['Asset ID']);
-}
-// Accepts 2026-10-12, 12/10/2026, 12-Oct-2026, 12/Oct/26
-function parseDate(v) {
-  if (v == null || v === '') return null;
-  let m;
-  if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(v))) return new Date(+m[1], m[2] - 1, +m[3]);
-  if ((m = /^(\d{1,2})[\/-]([A-Za-z]{3})[a-z]*[\/-](\d{2,4})$/.exec(v))) {
-    const mo = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(m[2].toLowerCase());
-    return mo < 0 ? null : new Date(m[3].length === 2 ? 2000 + +m[3] : +m[3], mo, +m[1]);
-  }
-  if ((m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(v))) return new Date(+m[3], m[2] - 1, +m[1]);
-  return null;
 }
 const root = document.documentElement;
 const isDark = () => root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
@@ -134,16 +118,8 @@ async function main() {
   const sum = k => stats.reduce((a, s) => a + s[k], 0);
   const T = { total: sum('total'), active: sum('active'), edr: sum('edr'), noEdr: sum('noEdr') };
 
-  // last 12 months of endpoint Last Seen
-  const now = new Date(), months = [];
-  for (let i = 11; i >= 0; i--) months.push(new Date(now.getFullYear(), now.getMonth() - i, 1));
-  const seen = months.map(m => E.filter(r => {
-    const d = parseDate(r['Last Seen']); return d && d.getFullYear() === m.getFullYear() && d.getMonth() === m.getMonth();
-  }).length);
-  const monthLabels = months.map(m => m.toLocaleString('en', { month: 'short', year: 'numeric' }));
-
   document.getElementById('sub').textContent =
-    E.length + ' endpoints + ' + S.length + ' servers · read live from ' + FILES.join(' + ') + ' · refreshed ' + now.toLocaleString();
+    E.length + ' endpoints + ' + S.length + ' servers · read live from ' + FILES.join(' + ') + ' · refreshed ' + new Date().toLocaleString();
 
   const tile = (l, v) => '<div class="tile"><div class="l">' + l + '</div><div class="v">' + v + '</div></div>';
   document.getElementById('tiles').innerHTML =
@@ -202,15 +178,10 @@ async function main() {
     { label: 'Total', data: stats.map(s => s.total), backgroundColor: css('--c1') },
     { label: 'Active', data: stats.map(s => s.active), backgroundColor: css('--c2') },
     { label: 'EDR installed', data: stats.map(s => s.edr), backgroundColor: css('--c3') }] } }));
-  charts.push(new Chart('c2', { type: 'doughnut', options: opts, data: { labels, datasets: [
-    { data: stats.map(s => s.total), backgroundColor: [css('--c1'), css('--c2'), css('--c3')], borderColor: css('--card') }] } }));
   charts.push(new Chart('c3', { type: 'bar', data: { labels, datasets: [
     { label: 'EDR installed', data: stats.map(s => s.edr), backgroundColor: css('--c2') },
     { label: 'No EDR', data: stats.map(s => s.noEdr), backgroundColor: css('--bad') }] },
     options: { ...opts, indexAxis: 'y', scales: { x: { stacked: true }, y: { stacked: true } } } }));
-  charts.push(new Chart('c4', { type: 'bar', data: { labels: monthLabels, datasets: [
-    { label: 'Endpoints', data: seen, backgroundColor: css('--c1') }] },
-    options: { ...opts, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } }));
   };
   redraw();
 }
