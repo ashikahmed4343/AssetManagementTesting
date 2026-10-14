@@ -29,18 +29,6 @@
   .sub { color:var(--muted); margin:4px 0 20px; font-size:13px; }
   .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:16px; }
   .tile, .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
-  button.tile { font:inherit; color:inherit; text-align:left; cursor:pointer; width:100%; }
-  button.tile:hover, button.tile:focus-visible { border-color:var(--muted); outline:none; box-shadow:0 0 0 2px var(--line); }
-  dialog { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:12px; padding:16px; width:min(960px, 94vw); max-height:86vh; }
-  dialog::backdrop { background:rgba(0,0,0,.5); }
-  .dlg-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
-  .dlg-head h2 { margin:0; font-size:18px; }
-  .dlg-tools { display:flex; gap:8px; margin-bottom:10px; }
-  .dlg-tools input { flex:1; padding:7px 10px; font:inherit; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:8px; }
-  .dlg-scroll { overflow:auto; max-height:58vh; }
-  .dlg-scroll th { position:sticky; top:0; background:var(--card); }
-  .dlg-scroll th, .dlg-scroll td { text-align:left; white-space:nowrap; }
-  .dlg-close { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:6px 12px; font:inherit; cursor:pointer; }
   .tile .l { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
   .tile .v { font-size:30px; font-weight:700; }
   .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px; margin-bottom:12px; }
@@ -89,11 +77,6 @@
     </div>
   </div>
 </main>
-<dialog id="hostDlg" aria-labelledby="dlgTitle">
-  <div class="dlg-head"><h2 id="dlgTitle"></h2><button class="dlg-close" id="dlgClose" type="button">Close</button></div>
-  <div class="dlg-tools"><input id="dlgFilter" type="search" placeholder="Filter by name, ID, OS, status…" aria-label="Filter hosts"></div>
-  <div class="dlg-scroll"><table id="dlgTbl"></table></div>
-</dialog>
 <script>
 const FILES = ['endpoints.csv', 'servers.csv'];
 const OS = [['Windows','Windows','Windows Server'],['macOS','macOS','macOS'],['Linux','Linux','Linux']];
@@ -138,22 +121,12 @@ async function main() {
   document.getElementById('sub').textContent =
     E.length + ' endpoints + ' + S.length + ' servers · read live from ' + FILES.join(' + ') + ' · refreshed ' + new Date().toLocaleString();
 
-  E.forEach(r => r._src = 'Endpoint'); S.forEach(r => r._src = 'Server');
-  const ALL = [...E, ...S];
-  const drill = [];
-  // a tile with a host list is clickable; clicking opens the list in a dialog
-  const tile = (l, v, rows) => {
-    if (!rows) return '<div class="tile"><div class="l">' + l + '</div><div class="v">' + v + '</div></div>';
-    drill.push({ title: l, rows });
-    return '<button type="button" class="tile" data-d="' + (drill.length - 1) + '" title="Click to list these hosts"><div class="l">' + l + '</div><div class="v">' + v + '</div></button>';
-  };
-  const byStatus = st => ALL.filter(r => String(r['Status'] || '').trim().toLowerCase() === st.toLowerCase());
+  const countStatus = st => [...E, ...S].filter(r => String(r['Status'] || '').trim().toLowerCase() === st.toLowerCase()).length;
+  const tile = (l, v) => '<div class="tile"><div class="l">' + l + '</div><div class="v">' + v + '</div></div>';
   document.getElementById('tiles').innerHTML =
-    tile('Total assets', T.total, ALL) + tile('Active', T.active, byStatus('Active')) + tile('With EDR', T.edr, ALL.filter(r => hasEdr(r['EDR Agent']))) +
-    tile('EDR coverage', T.total ? Math.round(100 * T.edr / T.total) + '%' : '0%', ALL.filter(r => hasEdr(r['EDR Agent']))) +
-    tile('Without EDR', T.noEdr, ALL.filter(r => !hasEdr(r['EDR Agent']))) +
-    tile('In repair', byStatus('In Repair').length, byStatus('In Repair')) + tile('Retired', byStatus('Retired').length, byStatus('Retired')) +
-    tile('Decommissioning', byStatus('Decommissioning').length, byStatus('Decommissioning'));
+    tile('Total assets', T.total) + tile('Active', T.active) + tile('With EDR', T.edr) +
+    tile('EDR coverage', T.total ? Math.round(100 * T.edr / T.total) + '%' : '0%') + tile('Without EDR', T.noEdr) +
+    tile('In repair', countStatus('In Repair')) + tile('Retired', countStatus('Retired')) + tile('Decommissioning', countStatus('Decommissioning'));
 
   document.getElementById('tbl').innerHTML =
     '<thead><tr><th>OS</th><th>Total</th><th>Active</th><th>EDR installed</th><th>No EDR</th></tr></thead><tbody>' +
@@ -165,8 +138,7 @@ async function main() {
                  ['Servers', S, 'Windows Server', 'macOS', 'Linux']];
   const otherEndpoints = E.length - kinds[0][1].length - kinds[1][1].length;
   document.getElementById('typeTiles').innerHTML =
-    kinds.map(k => tile(k[0], k[1].length, k[1])).join('') +
-    (otherEndpoints ? tile('Other endpoints', otherEndpoints, E.filter(r => r['Type'] !== 'Laptop' && r['Type'] !== 'Desktop')) : '') + tile('All hosts', ALL.length, ALL);
+    kinds.map(k => tile(k[0], k[1].length)).join('') + (otherEndpoints ? tile('Other endpoints', otherEndpoints) : '') + tile('All hosts', E.length + S.length);
   const byOs = (rows, os) => rows.filter(r => r['OS Family'] === os).length;
   document.getElementById('typeTbl').innerHTML =
     '<thead><tr><th>Type</th><th>Windows</th><th>macOS</th><th>Linux</th><th>Total</th></tr></thead><tbody>' +
@@ -184,35 +156,11 @@ async function main() {
   const U = [tool('JAMF', jamf, jamf, 'JAMF USB Enabled'), tool('CrowdStrike', cs, csOnly, 'CS Device Control Policy Enabled')];
   const missingTotal = U[0].missing + U[1].missing;
   document.getElementById('usbTiles').innerHTML =
-    tile('Hosts in JAMF', U[0].present, jamf) + tile('Hosts in CrowdStrike', U[1].present, cs) +
-    tile('USB block missing', missingTotal, [...jamf.filter(r => usb(r) !== 'JAMF USB Enabled'), ...csOnly.filter(r => usb(r) !== 'CS Device Control Policy Enabled')]);
+    tile('Hosts in JAMF', U[0].present) + tile('Hosts in CrowdStrike', U[1].present) + tile('USB block missing', missingTotal);
   document.getElementById('usbTbl').innerHTML =
     '<thead><tr><th>Tool</th><th>Hosts</th><th>Evaluated</th><th>Enabled</th><th>Missing</th><th>Covered</th></tr></thead><tbody>' +
     U.map(u => '<tr><td>' + u.name + '</td><td>' + u.present + '</td><td>' + u.evaluated + '</td><td>' + u.enabled + '</td><td>' + u.missing + '</td><td>' +
       (u.evaluated ? Math.round(100 * u.enabled / u.evaluated) + '%' : '–') + '</td></tr>').join('') + '</tbody>';
-
-  const dlg = document.getElementById('hostDlg'), dlgTbl = document.getElementById('dlgTbl'), dlgFilter = document.getElementById('dlgFilter');
-  const COLS = [['Asset ID', r => r['Asset ID']], ['Hostname', r => r['Hostname']], ['Source', r => r._src], ['Type / Role', r => r['Type'] || r['Role']],
-                ['OS', r => r['OS Family']], ['Status', r => r['Status']], ['EDR Agent', r => r['EDR Agent']], ['MDM', r => r['MDM / Mgmt']], ['USB Block Status', r => r['USB Block Status']]];
-  let shown = [];
-  const fill = () => {
-    const q = dlgFilter.value.trim().toLowerCase();
-    const rows = q ? shown.filter(r => COLS.some(c => String(c[1](r) ?? '').toLowerCase().includes(q))) : shown;
-    dlgTbl.textContent = '';
-    const head = dlgTbl.createTHead().insertRow();
-    COLS.forEach(c => { const th = document.createElement('th'); th.textContent = c[0]; head.append(th); });
-    const body = dlgTbl.createTBody();
-    rows.forEach(r => { const tr = body.insertRow(); COLS.forEach(c => { tr.insertCell().textContent = c[1](r) ?? ''; }); });
-    if (!rows.length) { const td = body.insertRow().insertCell(); td.colSpan = COLS.length; td.textContent = 'No hosts.'; }
-    document.getElementById('dlgTitle').textContent = dlg.dataset.title + ' (' + rows.length + (q ? ' of ' + shown.length : '') + ')';
-  };
-  document.querySelector('main').addEventListener('click', ev => {
-    const b = ev.target.closest('button.tile[data-d]'); if (!b) return;
-    const d = drill[+b.dataset.d]; shown = d.rows; dlg.dataset.title = d.title; dlgFilter.value = ''; fill(); dlg.showModal();
-  });
-  dlgFilter.addEventListener('input', fill);
-  document.getElementById('dlgClose').addEventListener('click', () => dlg.close());
-  dlg.addEventListener('click', ev => { if (ev.target === dlg) dlg.close(); });
 
   const charts = [];
   redraw = () => {
