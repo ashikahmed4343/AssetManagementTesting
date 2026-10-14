@@ -121,10 +121,12 @@ async function main() {
   document.getElementById('sub').textContent =
     E.length + ' endpoints + ' + S.length + ' servers · read live from ' + FILES.join(' + ') + ' · refreshed ' + new Date().toLocaleString();
 
+  const countStatus = st => [...E, ...S].filter(r => String(r['Status'] || '').trim().toLowerCase() === st.toLowerCase()).length;
   const tile = (l, v) => '<div class="tile"><div class="l">' + l + '</div><div class="v">' + v + '</div></div>';
   document.getElementById('tiles').innerHTML =
     tile('Total assets', T.total) + tile('Active', T.active) + tile('With EDR', T.edr) +
-    tile('EDR coverage', T.total ? Math.round(100 * T.edr / T.total) + '%' : '0%') + tile('Without EDR', T.noEdr);
+    tile('EDR coverage', T.total ? Math.round(100 * T.edr / T.total) + '%' : '0%') + tile('Without EDR', T.noEdr) +
+    tile('In repair', countStatus('In Repair')) + tile('Retired', countStatus('Retired'));
 
   document.getElementById('tbl').innerHTML =
     '<thead><tr><th>OS</th><th>Total</th><th>Active</th><th>EDR installed</th><th>No EDR</th></tr></thead><tbody>' +
