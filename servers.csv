@@ -26,4 +26,4 @@ SRV-0024,LSRV-UAT-59,Jump Host,Linux,Rocky Linux 9,VMware VM,UAT,4,256,10.123.22
 SRV-0025,MSRV-DEV-41,CI Build Runner,macOS,macOS 14 Server Host,Physical - Dell R750,Dev,16,64,10.130.39.177,Azure Central India,IT Ops,Priya Nair,Tier 0,Monthly,2026-08-18,CrowdStrike Falcon,Commvault,Active,Not Applicable
 SRV-0026,MSRV-DEV-76,CI Build Runner,macOS,macOS 14 Server Host,Physical - Dell R750,Dev,32,64,10.127.170.242,Azure Central India,IT Ops,Vikram Rao,Tier 3,Weekly,2026-08-28,CrowdStrike Falcon,Veeam,Active,Not Applicable
 SRV-0027,Ashik Server,,macOS,,,Production,,,,,,,,,2026-10-13,CrowdStrike Falcon,,Active,Not Applicable
-SRV-0028,AshikServer2,Pass@367,Linux,,,,,,,,Ashik@1234,,,,,CrowdStrike Falcon,,Active
+SRV-0028,AshikServer2,,Linux,,,,,,,,,,,,,CrowdStrike Falcon,,Active,Not Applicable
