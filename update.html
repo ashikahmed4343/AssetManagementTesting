@@ -27,6 +27,12 @@
   .hint { color:var(--muted); font-size:13px; margin:0 0 10px; }
   label { display:block; font-size:12px; color:var(--muted); margin-bottom:3px; text-transform:uppercase; letter-spacing:.03em; }
   input, select { width:100%; padding:8px 10px; font:inherit; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:8px; }
+  dialog#credDlg { background:var(--card); color:var(--text); border:2px solid var(--bad); border-radius:12px; padding:20px; width:min(460px, 92vw); }
+  dialog#credDlg::backdrop { background:rgba(0,0,0,.55); }
+  #credDlg h2 { margin:0 0 8px; font-size:18px; color:var(--bad); }
+  #credDlg p { margin:0 0 10px; }
+  #credDlg ul { margin:0 0 14px; padding-left:20px; }
+  #credDlg .actions { display:flex; gap:8px; justify-content:flex-end; }
   .flag { border-color:var(--bad) !important; outline:2px solid var(--bad); }
   input[readonly] { opacity:.7; }
   .fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
@@ -94,6 +100,15 @@
     </form>
   </div>
 </main>
+<dialog id="credDlg" role="alertdialog" aria-labelledby="credTitle" aria-describedby="credBody">
+  <h2 id="credTitle">⚠ Credential detected</h2>
+  <div id="credBody">
+    <p>It looks like you are trying to enter a <b>password, key or token</b> in:</p>
+    <ul id="credList"></ul>
+    <p>Credentials must never be stored here. This repo is <b>public</b>, so anyone could read them. Nothing has been saved.</p>
+  </div>
+  <div class="actions"><button type="button" id="credClear">Clear these fields</button><button type="button" class="primary" id="credOk">OK, I'll fix it</button></div>
+</dialog>
 <script>
 const REPO = 'ashikahmed4343/AssetManagementTesting', BRANCH = 'main';
 const API = 'https://api.github.com/repos/' + REPO + '/contents/';
@@ -180,6 +195,15 @@ function notify(kind, text, title) {
 }
 function show(kind, text, title) { const m = $('msg'); m.className = kind; m.textContent = ''; m.append(text); notify(kind, text, title); }
 
+// Pop-up shown when a credential-like value is typed or about to be saved. It names the columns, never the value.
+let credCols = [];
+function credPopup(cols) {
+  credCols = cols;
+  const ul = $('credList'); ul.textContent = '';
+  cols.forEach(h => { const li = document.createElement('li'); li.textContent = h; ul.append(li); });
+  const d = $('credDlg'); if (!d.open) d.showModal();
+  $('credOk').focus();
+}
 // Names the columns whose value looks like a credential (password, key, token, private key). Used to refuse the save.
 const CRED_WORD = /(^|[^a-z])(pass(w[o0]rd|wd|word|phrase)?|pwd|secret|api[-_ ]?key|token|credential)([^a-z]|$)/i;
 const CRED_FORMAT = /gh[pousr]_[A-Za-z0-9]{20,}|github_pat_|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[baprs]-|sk-[A-Za-z0-9]{20,}|BEGIN [A-Z ]*PRIVATE KEY|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\./;
@@ -273,7 +297,7 @@ async function save(ev) {
   if (creds.length) {
     creds.forEach(h => { const el = [...document.querySelectorAll('#fields [data-col]')].find(e => e.dataset.col === h); if (el) el.classList.add('flag'); });
     return show('err', 'Not saved: you are trying to save a credential in ' + creds.map(h => "'" + h + "'").join(', ') +
-      '. Passwords, keys and tokens must never be stored here (this repo is public). Remove it and save again.', 'Credential detected — not saved');
+      '. Passwords, keys and tokens must never be stored here (this repo is public). Remove it and save again.', 'Credential detected — not saved'), credPopup(creds);
   }
   $('save').disabled = true;
   try {
@@ -317,6 +341,11 @@ async function del() {
   $('del').disabled = $('save').disabled = false;
 }
 $('del').addEventListener('click', del);
+$('credOk').addEventListener('click', () => $('credDlg').close());
+$('credClear').addEventListener('click', () => {
+  document.querySelectorAll('#fields [data-col]').forEach(el => { if (credCols.includes(el.dataset.col)) { el.value = ''; el.classList.remove('flag'); el.title = ''; } });
+  clearMsg(); $('credDlg').close();
+});
 notifyState();
 $('saveToken').addEventListener('click', connect);
 $('token').addEventListener('keydown', e => { if (e.key === 'Enter') connect(); });
@@ -326,6 +355,7 @@ $('fields').addEventListener('change', ev => {
   const el = ev.target; if (!el.dataset || !el.dataset.col) return;
   const bad = el.dataset.col !== 'Asset ID' && looksLikeCredential(el.value);
   el.classList.toggle('flag', bad); el.title = bad ? 'This looks like a credential and will not be saved.' : '';
+  if (bad) { notify('err', 'You are typing a credential in \'' + el.dataset.col + '\'. It will not be saved.', 'Credential detected'); credPopup([el.dataset.col]); }
 });
 $('form').addEventListener('submit', save);
 try { const t = localStorage.getItem('gh_token'); if (t) { $('token').value = t; connect(); } } catch (e) {}
