@@ -27,6 +27,7 @@
   .hint { color:var(--muted); font-size:13px; margin:0 0 10px; }
   label { display:block; font-size:12px; color:var(--muted); margin-bottom:3px; text-transform:uppercase; letter-spacing:.03em; }
   input, select { width:100%; padding:8px 10px; font:inherit; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:8px; }
+  .flag { border-color:var(--bad) !important; outline:2px solid var(--bad); }
   input[readonly] { opacity:.7; }
   .fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
   .row { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; }
@@ -172,24 +173,24 @@ async function askNotify() {
   if (canNotify() && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch (e) {} }
   notifyState();
 }
-function notify(kind, text) {
+function notify(kind, text, title) {
   if (!canNotify() || Notification.permission !== 'granted') return;
-  const title = kind === 'ok' ? 'Host updated' : kind === 'warn' ? 'Host saved — please review' : 'Asset update failed';
+  title = title || (kind === 'ok' ? 'Host updated' : kind === 'warn' ? 'Host saved — please review' : 'Asset update failed');
   try { new Notification(title, { body: text, tag: 'asset-update' }); } catch (e) {}
 }
-function show(kind, text) { const m = $('msg'); m.className = kind; m.textContent = ''; m.append(text); notify(kind, text); }
+function show(kind, text, title) { const m = $('msg'); m.className = kind; m.textContent = ''; m.append(text); notify(kind, text, title); }
 
-// Flags values that look like passwords or secrets. Warns only; it never blocks a save.
-function suspicious(header, values) {
-  const out = [];
-  header.forEach((h, i) => {
-    const v = values[i] || '';
-    if (!v || h === 'Asset ID') return;
-    const keyword = /\b(pass(word|wd)?|pwd|secret|api[-_ ]?key|token)\b/i.test(v);
-    const passwordish = !/\s/.test(v) && /[a-z]/.test(v) && /[A-Z]/.test(v) && /\d/.test(v) && /[@#$%^&*!]/.test(v) && !/@[^@]*\./.test(v);
-    if (keyword || passwordish) out.push("'" + h + "' (" + v.slice(0, 2) + '•••)');
-  });
-  return out.length ? 'possible password or secret in ' + out.join(', ') + ' — this repo is public' : '';
+// Names the columns whose value looks like a credential (password, key, token, private key). Used to refuse the save.
+const CRED_WORD = /(^|[^a-z])(pass(w[o0]rd|wd|word|phrase)?|pwd|secret|api[-_ ]?key|token|credential)([^a-z]|$)/i;
+const CRED_FORMAT = /gh[pousr]_[A-Za-z0-9]{20,}|github_pat_|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[baprs]-|sk-[A-Za-z0-9]{20,}|BEGIN [A-Z ]*PRIVATE KEY|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\./;
+function looksLikeCredential(v) {
+  v = String(v || '');
+  if (!v) return false;
+  const passwordish = !/\s/.test(v) && /[a-z]/.test(v) && /[A-Z]/.test(v) && /\d/.test(v) && /[@#$%^&*!]/.test(v) && !/@[^@]*\./.test(v);
+  return CRED_WORD.test(v) || CRED_FORMAT.test(v) || passwordish;
+}
+function credentialColumns(header, values) {
+  return header.filter((h, i) => h !== 'Asset ID' && looksLikeCredential(values[i]));
 }
 function clearMsg() { $('msg').className = ''; $('msg').textContent = ''; }
 
@@ -268,6 +269,12 @@ async function save(ev) {
   const header = current.rows[0], values = header.map((h, i) => $('f' + i).value.trim());
   const missing = REQUIRED.filter(h => !values[header.indexOf(h)]);
   if (missing.length) return show('err', 'Please fill in: ' + missing.join(', '));
+  const creds = credentialColumns(header, values);
+  if (creds.length) {
+    creds.forEach(h => { const el = [...document.querySelectorAll('#fields [data-col]')].find(e => e.dataset.col === h); if (el) el.classList.add('flag'); });
+    return show('err', 'Not saved: you are trying to save a credential in ' + creds.map(h => "'" + h + "'").join(', ') +
+      '. Passwords, keys and tokens must never be stored here (this repo is public). Remove it and save again.', 'Credential detected — not saved');
+  }
   $('save').disabled = true;
   try {
     // re-read just before writing so we never overwrite someone else's change
@@ -279,9 +286,7 @@ async function save(ev) {
     else { values[0] = values[0] || nextId(current.rows); if (current.rows.slice(1).some(r => r[0] === values[0])) values[0] = nextId(current.rows); current.rows.push(values); verb = 'Added'; }
     await gh(current.file, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
       message: verb + ' host ' + values[hi] + ' (' + values[0] + ') via web form', content: b64enc(toCsv(current.rows)), sha: current.sha, branch: BRANCH }) });
-    const warn = suspicious(header, values);
-    const done = verb + ' ' + values[hi] + ' (' + values[0] + '). The dashboard will show it in about a minute.';
-    if (warn) show('warn', done + ' Warning: ' + warn + '.'); else show('ok', done);
+    show('ok', verb + ' ' + values[hi] + ' (' + values[0] + '). The dashboard will show it in about a minute.');
     await loadKind(true);
   } catch (e) {
     show('err', e.status === 403 || e.status === 404 ? 'Save refused — the token needs "Contents: Read and write" on ' + REPO + '.' : 'Save failed: ' + e.message);
@@ -317,6 +322,11 @@ $('saveToken').addEventListener('click', connect);
 $('token').addEventListener('keydown', e => { if (e.key === 'Enter') connect(); });
 $('kind').addEventListener('change', () => loadKind());
 $('lookup').addEventListener('change', refreshMode);
+$('fields').addEventListener('change', ev => {
+  const el = ev.target; if (!el.dataset || !el.dataset.col) return;
+  const bad = el.dataset.col !== 'Asset ID' && looksLikeCredential(el.value);
+  el.classList.toggle('flag', bad); el.title = bad ? 'This looks like a credential and will not be saved.' : '';
+});
 $('form').addEventListener('submit', save);
 try { const t = localStorage.getItem('gh_token'); if (t) { $('token').value = t; connect(); } } catch (e) {}
 </script>
