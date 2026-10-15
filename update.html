@@ -291,14 +291,14 @@ async function connect() {
 async function save(ev) {
   ev.preventDefault(); clearMsg(); askNotify();
   const header = current.rows[0], values = header.map((h, i) => $('f' + i).value.trim());
-  const missing = REQUIRED.filter(h => !values[header.indexOf(h)]);
-  if (missing.length) return show('err', 'Please fill in: ' + missing.join(', '));
   const creds = credentialColumns(header, values);
   if (creds.length) {
     creds.forEach(h => { const el = [...document.querySelectorAll('#fields [data-col]')].find(e => e.dataset.col === h); if (el) el.classList.add('flag'); });
     return show('err', 'Not saved: you are trying to save a credential in ' + creds.map(h => "'" + h + "'").join(', ') +
       '. Passwords, keys and tokens must never be stored here (this repo is public). Remove it and save again.', 'Credential detected — not saved'), credPopup(creds);
   }
+  const missing = REQUIRED.filter(h => !values[header.indexOf(h)]);
+  if (missing.length) return show('err', 'Please fill in: ' + missing.join(', '));
   $('save').disabled = true;
   try {
     // re-read just before writing so we never overwrite someone else's change
@@ -355,7 +355,6 @@ $('fields').addEventListener('change', ev => {
   const el = ev.target; if (!el.dataset || !el.dataset.col) return;
   const bad = el.dataset.col !== 'Asset ID' && looksLikeCredential(el.value);
   el.classList.toggle('flag', bad); el.title = bad ? 'This looks like a credential and will not be saved.' : '';
-  if (bad) { notify('err', 'You are typing a credential in \'' + el.dataset.col + '\'. It will not be saved.', 'Credential detected'); credPopup([el.dataset.col]); }
 });
 $('form').addEventListener('submit', save);
 try { const t = localStorage.getItem('gh_token'); if (t) { $('token').value = t; connect(); } } catch (e) {}
